@@ -36,8 +36,7 @@ const sprites = [
     'gameover', 'message',
     'pipe-green', 'pipe-red',
     'redbird-downflap', 'redbird-midflap', 'redbird-upflap',
-    'yellowbird-downflap', 'yellowbird-midflap', 'yellowbird-upflap',
-    'medals'
+    'yellowbird-downflap', 'yellowbird-midflap', 'yellowbird-upflap'
 ];
 
 const soundFiles = ['die', 'hit', 'point', 'swoosh', 'wing'];
@@ -249,39 +248,6 @@ function drawScore() {
 function drawGetReady() {
     if (gameState === GameState.GET_READY) {
         ctx.drawImage(ASSETS['message'], 48, 90);
-    }
-}
-
-function getMedal() {
-    if (score >= 40) return 3;
-    if (score >= 30) return 2;
-    if (score >= 20) return 1;
-    if (score >= 10) return 0;
-    return -1;
-}
-
-function drawGameOver() {
-    if (gameState === GameState.GAME_OVER) {
-        ctx.drawImage(ASSETS['gameover'], 42, 120);
-
-        const scoreStr = score.toString();
-        const bestStr = bestScore.toString();
-
-        const scoreX = 160;
-        const bestX = 160;
-
-        scoreStr.split('').forEach((digit, i) => {
-            ctx.drawImage(ASSETS[digit], scoreX + i * 24, 185);
-        });
-
-        bestStr.split('').forEach((digit, i) => {
-            ctx.drawImage(ASSETS[digit], bestX + i * 24, 225);
-        });
-
-        const medal = getMedal();
-        if (medal >= 0 && ASSETS['medals']) {
-            ctx.drawImage(ASSETS['medals'], 62, 155, 22 * medal, 22, 0, 0, 22, 22);
-        }
     }
 }
 
