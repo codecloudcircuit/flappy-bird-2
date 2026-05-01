@@ -36,7 +36,8 @@ const sprites = [
     'gameover', 'message',
     'pipe-green', 'pipe-red',
     'redbird-downflap', 'redbird-midflap', 'redbird-upflap',
-    'yellowbird-downflap', 'yellowbird-midflap', 'yellowbird-upflap'
+    'yellowbird-downflap', 'yellowbird-midflap', 'yellowbird-upflap',
+    'medals'
 ];
 
 const soundFiles = ['die', 'hit', 'point', 'swoosh', 'wing'];
@@ -54,7 +55,7 @@ function checkLoad() {
 }
 
 const GRAVITY = 0.25;
-const JUMP = -4.5;
+const JUMP = -4.6;
 const PIPE_SPEED = 2;
 const PIPE_GAP = 100;
 const PIPE_SPACING = 200;
@@ -68,7 +69,7 @@ const GameState = {
 
 let gameState = GameState.GET_READY;
 let score = 0;
-let bestScore = localStorage.getItem('flappyBest') || 0;
+let bestScore = parseInt(localStorage.getItem('flappyBest')) || 0;
 
 let bird = {
     x: BIRD_X,
@@ -77,15 +78,14 @@ let bird = {
     frame: 0,
     rotation: 0,
     birdType: 'yellow',
-    birdColors: ['yellow', 'red', 'blue']
+    birdColors: ['yellow', 'red', 'blue'],
+    colorIndex: 0
 };
 
 let pipes = [];
-let bgColor = '#70c5ce';
 let isNight = false;
-let bgIndex = 0;
-
 let frameCount = 0;
+let showGetReady = true;
 
 function initGame() {
     resetGame();
@@ -97,12 +97,13 @@ function resetGame() {
     bird.velocity = 0;
     bird.frame = 0;
     bird.rotation = 0;
-    bird.birdType = bird.birdColors[0];
+    bird.colorIndex = 0;
+    bird.birdType = bird.birdColors[bird.colorIndex];
     pipes = [];
     score = 0;
     frameCount = 0;
     isNight = false;
-    bgIndex = 0;
+    showGetReady = true;
     gameState = GameState.GET_READY;
 }
 
@@ -114,9 +115,18 @@ function jump() {
     }
 }
 
+function cycleBirdColor() {
+    bird.colorIndex = (bird.colorIndex + 1) % bird.birdColors.length;
+    bird.birdType = bird.birdColors[bird.colorIndex];
+    if (sounds.swoosh) {
+        sounds.swoosh.currentTime = 0;
+        sounds.swoosh.play().catch(() => {});
+    }
+}
+
 function getBirdSprite() {
     const type = bird.birdType;
-    const frame = Math.floor(bird.frame / 10) % 3;
+    const frame = Math.floor(bird.frame / 12) % 3;
     const flapMap = {
         0: 'downflap',
         1: 'midflap',
@@ -182,8 +192,8 @@ function checkCollision() {
         const pipeW = 52;
         const pipeH = 320;
 
-        if (bird.x + birdW > pipe.x && bird.x < pipe.x + pipeW) {
-            if (bird.y < pipe.y + pipeH || bird.y + birdH > pipe.y + PIPE_GAP + pipeH) {
+        if (bird.x + birdW - 4 > pipe.x + 4 && bird.x + 4 < pipe.x + pipeW - 4) {
+            if (bird.y + 4 < pipe.y + pipeH - 10 || bird.y + birdH - 4 > pipe.y + PIPE_GAP + 10) {
                 return true;
             }
         }
@@ -201,8 +211,13 @@ function drawPipes() {
     const pipeImg = ASSETS[pipeName];
 
     pipes.forEach(pipe => {
-        ctx.drawImage(pipeImg, pipe.x, pipe.y);
-        ctx.drawImage(pipeImg, pipe.x, pipe.y + PIPE_GAP + 320);
+        ctx.save();
+        ctx.translate(pipe.x + 26, pipe.y + 320);
+        ctx.scale(1, -1);
+        ctx.drawImage(pipeImg, -26, -320);
+        ctx.restore();
+
+        ctx.drawImage(pipeImg, pipe.x, pipe.y + PIPE_GAP);
     });
 }
 
@@ -220,35 +235,54 @@ function drawBase() {
 }
 
 function drawScore() {
-    const scoreStr = score.toString();
-    const digitW = 24;
-    const startX = canvas.width / 2 - (scoreStr.length * digitW) / 2;
+    if (gameState !== GameState.GET_READY) {
+        const scoreStr = score.toString();
+        const digitW = 24;
+        const startX = canvas.width / 2 - (scoreStr.length * digitW) / 2;
 
-    scoreStr.split('').forEach((digit, i) => {
-        ctx.drawImage(ASSETS[digit], startX + i * digitW, 30);
-    });
+        scoreStr.split('').forEach((digit, i) => {
+            ctx.drawImage(ASSETS[digit], startX + i * digitW, 30);
+        });
+    }
 }
 
 function drawGetReady() {
-    ctx.drawImage(ASSETS['message'], 48, 90);
+    if (gameState === GameState.GET_READY) {
+        ctx.drawImage(ASSETS['message'], 48, 90);
+    }
+}
+
+function getMedal() {
+    if (score >= 40) return 3;
+    if (score >= 30) return 2;
+    if (score >= 20) return 1;
+    if (score >= 10) return 0;
+    return -1;
 }
 
 function drawGameOver() {
-    ctx.drawImage(ASSETS['gameover'], 42, 120);
+    if (gameState === GameState.GAME_OVER) {
+        ctx.drawImage(ASSETS['gameover'], 42, 120);
 
-    const scoreStr = score.toString();
-    const bestStr = bestScore.toString();
+        const scoreStr = score.toString();
+        const bestStr = bestScore.toString();
 
-    const scoreX = 160;
-    const bestX = 160;
+        const scoreX = 160;
+        const bestX = 160;
 
-    scoreStr.split('').forEach((digit, i) => {
-        ctx.drawImage(ASSETS[digit], scoreX + i * 24, 185);
-    });
+        scoreStr.split('').forEach((digit, i) => {
+            ctx.drawImage(ASSETS[digit], scoreX + i * 24, 185);
+        });
 
-    bestStr.split('').forEach((digit, i) => {
-        ctx.drawImage(ASSETS[digit], bestX + i * 24, 225);
-    });
+        bestStr.split('').forEach((digit, i) => {
+            ctx.drawImage(ASSETS[digit], bestX + i * 24, 225);
+        });
+
+        const medal = getMedal();
+        if (medal >= 0 && ASSETS['medals']) {
+            ctx.drawImage(ASSETS['medals'], 62, 155, 22 * medal, 22, 0, 0, 22, 22);
+        }
+    }
 }
 
 function gameOver() {
@@ -278,16 +312,22 @@ function update() {
 
         if (frameCount % 1000 === 0) {
             isNight = !isNight;
+            if (sounds.swoosh) {
+                sounds.swoosh.currentTime = 0;
+                sounds.swoosh.play().catch(() => {});
+            }
         }
 
         if (checkCollision()) {
             gameOver();
         }
+    } else if (gameState === GameState.GET_READY) {
+        bird.frame++;
     }
 }
 
 function draw() {
-    ctx.fillStyle = bgColor;
+    ctx.fillStyle = '#70c5ce';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     drawBackground();
@@ -300,7 +340,6 @@ function draw() {
     } else if (gameState === GameState.PLAYING) {
         drawScore();
     } else if (gameState === GameState.GAME_OVER) {
-        drawScore();
         drawGameOver();
     }
 }
@@ -314,36 +353,32 @@ function gameLoop() {
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
         e.preventDefault();
-        if (gameState === GameState.GET_READY) {
-            gameState = GameState.PLAYING;
-        } else if (gameState === GameState.PLAYING) {
-            jump();
-        } else if (gameState === GameState.GAME_OVER) {
-            resetGame();
-            gameState = GameState.GET_READY;
-        }
+        handleInput();
     }
 });
 
-canvas.addEventListener('click', () => {
+function handleInput() {
     if (gameState === GameState.GET_READY) {
         gameState = GameState.PLAYING;
     } else if (gameState === GameState.PLAYING) {
         jump();
     } else if (gameState === GameState.GAME_OVER) {
         resetGame();
-        gameState = GameState.GET_READY;
+    }
+}
+
+canvas.addEventListener('click', (e) => {
+    handleInput();
+});
+
+canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (gameState === GameState.GET_READY) {
+        cycleBirdColor();
     }
 });
 
 document.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (gameState === GameState.GET_READY) {
-        gameState = GameState.PLAYING;
-    } else if (gameState === GameState.PLAYING) {
-        jump();
-    } else if (gameState === GameState.GAME_OVER) {
-        resetGame();
-        gameState = GameState.GET_READY;
-    }
+    handleInput();
 }, { passive: false });
